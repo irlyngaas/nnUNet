@@ -1,0 +1,81 @@
+There will be two working branches need to run nnUNet on OLCF, master branch (preprocessing, postprocessing, and inference) on Andes and summit branch (training)
+-Summit is ppc and dependency ITK isn't available to be installed on Summit, hence why we need to do everything else but training on Andes, which is x86
+
+Preprocessing on Andes
+-Build Miniconda
+--wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+--bash ./Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/conda
+--export PATH=$PWD/conda/bin:$PATH
+--eval "$($PWD/conda/bin/conda shell.bash hook)"
+--conda create -y --prefix=$PATH/preprocess
+--conda activate ./preprocess
+
+-Clone master
+--git clone https://github.com/irlyngaas/nnUNet.git
+-- python install -e .
+
+-Set environment variables
+--export nnUNet_raw_data_base=/gpfs/alpine/bif141/proj-shared/$USER/raw_data
+---Folder from /gpfs/alpine/bif141/proj-shared/Task901_BraTS needs to be in $nnUnet_raw_data_base/nnUNet_raw_data
+--export nnUNet_preprocessed=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/PREPROCESS
+--export RESULTS_FOLDER=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/RESULTS
+
+-Run preprocessing
+--python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 999 -pl3d ExperimentPlanner3D_v21 --verify_dataset_integrity
+
+Notes::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+Experiment plans and preprocessed data go to $nnUNet_preprocessed
+-3D preprocessed data in $nnUNet_preprocessed/Task999_bigger/nnUNetData_plans_v2.1_stage0
+-2D preprocessed data in $nnUNet_preprocessed/Task999_bigger/nnUNetData_plans_v2.1_2D_stage0
+-3D plans in $nnUNet_preprocessed/Task999_bigger/nnUNetPlansv2.1_plans_3D.pkl
+-2D plans in $nnUNet_preprocessed/Task999_bigger/nnUNetPlansv2.1_plans_2D.pkl
+
+Plans for neural network are dynamically created based on data using the default experiment planner in ExperimentPlanner3D_v21
+--Need to alter this file if you wanted to create your own experiment and not use dynamic planner
+plan = {
+            'batch_size': batch_size,
+            'num_pool_per_axis': network_num_pool_per_axis,
+            'patch_size': input_patch_size,
+            'median_patient_size_in_voxels': new_median_shape,
+            'current_spacing': current_spacing,
+            'original_spacing': original_spacing,
+            'do_dummy_2D_data_aug': do_dummy_2D_data_aug,
+            'pool_op_kernel_sizes': pool_op_kernel_sizes,
+            'conv_kernel_sizes': conv_kernel_sizes,
+        }
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+Training on Summit
+
+-Build Conda environment
+--module load open-ce/1.5.2-py38-0
+--conda create --clone open-ce/1.5.2-py38-0 --prefix /gpfs/alpine/bif141/proj-shared/$USER/nnunet_conda
+--conda activate /gpfs/alpine/bif141/proj-shared/$USER/nnunet_conda
+
+-Clone summit branch
+-- git clone -b summit https://github.com/irlyngaas/nnUNet.git nnUNet_summit
+-- cd nnUNet_summit
+-- pip install -e .
+
+-Set environment variables (These are set in ddp_launch.lsf so doesn't need to be done to launch training, just want to emphasize using paths from preprocessing. All results will also go there so as to not be jumping between repos)
+--export nnUNet_raw_data_base=/gpfs/alpine/bif141/proj-shared/$USER/raw_data
+---Folder from /gpfs/alpine/bif141/proj-shared/Task901_BraTS needs to be in $nnUnet_raw_data_base/nnUNet_raw_data
+--export nnUNet_preprocessed=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/PREPROCESS
+--export RESULTS_FOLDER=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/RESULTS
+
+-Run training on master branch
+-- bsub ddp_launch.lsf
+---Need to set paths in this script based on where your repos are located
+
+Notes::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 2 -a 2 -c 42 python /gpfs/alpine/bif141/proj-shared/$USER/nnUNet_summit/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task999_bigger all --dbs
+-- g - number of gpus (6 on Summit for max GPUs)
+-- a - number of task (6 on Summit for max GPUs, 1 GPU per Task)
+
+logs in $RESULTS_FOLDER/nnUNet/3d_fullres/Task999_bigger/nnUNetTrainerV2_DDP__nnUNetPlansv2.1/all/training_log*
+model in $RESULTS_FOLDER/nnUNet/3d_fullres/Task999_bigger/nnUNetTrainerV2_DDP__nnUNetPlansv2.1/all/model_best.model and
+         $RESULTS_FOLDER/nnUNet/3d_fullres/Task999_bigger/nnUNetTrainerV2_DDP__nnUNetPlansv2.1/all/model_best.model.pkl
