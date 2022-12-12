@@ -29,12 +29,12 @@ from torch.optim import lr_scheduler
 
 import nnunet
 from nnunet.configuration import default_num_threads
-from nnunet.evaluation.evaluator import aggregate_scores
-from nnunet.inference.segmentation_export import save_segmentation_nifti_from_softmax
+#from nnunet.evaluation.evaluator import aggregate_scores
+#from nnunet.inference.segmentation_export import save_segmentation_nifti_from_softmax
 from nnunet.network_architecture.generic_UNet import Generic_UNet
 from nnunet.network_architecture.initialization import InitWeights_He
 from nnunet.network_architecture.neural_network import SegmentationNetwork
-from nnunet.postprocessing.connected_components import determine_postprocessing
+#from nnunet.postprocessing.connected_components import determine_postprocessing
 from nnunet.training.data_augmentation.default_data_augmentation import default_3D_augmentation_params, \
     default_2D_augmentation_params, get_default_augmentation, get_patch_size
 from nnunet.training.dataloading.dataset_loading import load_dataset, DataLoader3D, DataLoader2D, unpack_dataset
@@ -475,10 +475,10 @@ class nnUNetTrainer(NetworkTrainer):
             interpolation_order_z = 0
 
         print("resampling to original spacing and nifti export...")
-        save_segmentation_nifti_from_softmax(pred, output_file, properties, interpolation_order,
-                                             self.regions_class_order, None, None, softmax_ouput_file,
-                                             None, force_separate_z=force_separate_z,
-                                             interpolation_order_z=interpolation_order_z)
+        #save_segmentation_nifti_from_softmax(pred, output_file, properties, interpolation_order,
+        #                                     self.regions_class_order, None, None, softmax_ouput_file,
+        #                                     None, force_separate_z=force_separate_z,
+        #                                     interpolation_order_z=interpolation_order_z)
         print("done")
 
     def predict_preprocessed_data_return_seg_and_softmax(self, data: np.ndarray, do_mirroring: bool = True,
@@ -620,15 +620,15 @@ class nnUNetTrainer(NetworkTrainer):
                     np.save(join(output_folder, fname + ".npy"), softmax_pred)
                     softmax_pred = join(output_folder, fname + ".npy")
 
-                results.append(export_pool.starmap_async(save_segmentation_nifti_from_softmax,
-                                                         ((softmax_pred, join(output_folder, fname + ".nii.gz"),
-                                                           properties, interpolation_order, self.regions_class_order,
-                                                           None, None,
-                                                           softmax_fname, None, force_separate_z,
-                                                           interpolation_order_z),
-                                                          )
-                                                         )
-                               )
+                #results.append(export_pool.starmap_async(save_segmentation_nifti_from_softmax,
+                #                                         ((softmax_pred, join(output_folder, fname + ".nii.gz"),
+                #                                           properties, interpolation_order, self.regions_class_order,
+                #                                           None, None,
+                #                                           softmax_fname, None, force_separate_z,
+                #                                           interpolation_order_z),
+                #                                          )
+                #                                         )
+                #               )
 
             pred_gt_tuples.append([join(output_folder, fname + ".nii.gz"),
                                    join(self.gt_niftis_folder, fname + ".nii.gz")])
@@ -640,22 +640,22 @@ class nnUNetTrainer(NetworkTrainer):
         self.print_to_log_file("evaluation of raw predictions")
         task = self.dataset_directory.split("/")[-1]
         job_name = self.experiment_name
-        _ = aggregate_scores(pred_gt_tuples, labels=list(range(self.num_classes)),
-                             json_output_file=join(output_folder, "summary.json"),
-                             json_name=job_name + " val tiled %s" % (str(use_sliding_window)),
-                             json_author="Fabian",
-                             json_task=task, num_threads=default_num_threads)
+        #_ = aggregate_scores(pred_gt_tuples, labels=list(range(self.num_classes)),
+        #                     json_output_file=join(output_folder, "summary.json"),
+        #                     json_name=job_name + " val tiled %s" % (str(use_sliding_window)),
+        #                     json_author="Fabian",
+        #                     json_task=task, num_threads=default_num_threads)
 
-        if run_postprocessing_on_folds:
-            # in the old nnunet we would stop here. Now we add a postprocessing. This postprocessing can remove everything
-            # except the largest connected component for each class. To see if this improves results, we do this for all
-            # classes and then rerun the evaluation. Those classes for which this resulted in an improved dice score will
-            # have this applied during inference as well
-            self.print_to_log_file("determining postprocessing")
-            determine_postprocessing(self.output_folder, self.gt_niftis_folder, validation_folder_name,
-                                     final_subf_name=validation_folder_name + "_postprocessed", debug=debug)
-            # after this the final predictions for the vlaidation set can be found in validation_folder_name_base + "_postprocessed"
-            # They are always in that folder, even if no postprocessing as applied!
+        #if run_postprocessing_on_folds:
+        #    # in the old nnunet we would stop here. Now we add a postprocessing. This postprocessing can remove everything
+        #    # except the largest connected component for each class. To see if this improves results, we do this for all
+        #    # classes and then rerun the evaluation. Those classes for which this resulted in an improved dice score will
+        #    # have this applied during inference as well
+        #    self.print_to_log_file("determining postprocessing")
+        #    determine_postprocessing(self.output_folder, self.gt_niftis_folder, validation_folder_name,
+        #                             final_subf_name=validation_folder_name + "_postprocessed", debug=debug)
+        #    # after this the final predictions for the vlaidation set can be found in validation_folder_name_base + "_postprocessed"
+        #    # They are always in that folder, even if no postprocessing as applied!
 
         # detemining postprocesing on a per-fold basis may be OK for this fold but what if another fold finds another
         # postprocesing to be better? In this case we need to consolidate. At the time the consolidation is going to be

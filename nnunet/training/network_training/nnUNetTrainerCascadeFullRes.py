@@ -17,14 +17,14 @@ from multiprocessing.pool import Pool
 from time import sleep
 
 import matplotlib
-from nnunet.postprocessing.connected_components import determine_postprocessing
+#from nnunet.postprocessing.connected_components import determine_postprocessing
 from nnunet.training.data_augmentation.default_data_augmentation import get_default_augmentation
 from nnunet.training.dataloading.dataset_loading import DataLoader3D, unpack_dataset
-from nnunet.evaluation.evaluator import aggregate_scores
+#from nnunet.evaluation.evaluator import aggregate_scores
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
 from nnunet.network_architecture.neural_network import SegmentationNetwork
 from nnunet.paths import network_training_output_dir
-from nnunet.inference.segmentation_export import save_segmentation_nifti_from_softmax
+#from nnunet.inference.segmentation_export import save_segmentation_nifti_from_softmax
 from batchgenerators.utilities.file_and_folder_operations import *
 import numpy as np
 from nnunet.utilities.one_hot_encoding import to_one_hot
@@ -235,15 +235,15 @@ class nnUNetTrainerCascadeFullRes(nnUNetTrainer):
                 np.save(fname + ".npy", softmax_pred)
                 softmax_pred = fname + ".npy"
 
-            results.append(export_pool.starmap_async(save_segmentation_nifti_from_softmax,
-                                                     ((softmax_pred, join(output_folder, fname + ".nii.gz"),
-                                                       properties, interpolation_order, self.regions_class_order,
-                                                       None, None,
-                                                       softmax_fname, None, force_separate_z,
-                                                       interpolation_order_z),
-                                                      )
-                                                     )
-                           )
+            #results.append(export_pool.starmap_async(save_segmentation_nifti_from_softmax,
+            #                                         ((softmax_pred, join(output_folder, fname + ".nii.gz"),
+            #                                           properties, interpolation_order, self.regions_class_order,
+            #                                           None, None,
+            #                                           softmax_fname, None, force_separate_z,
+            #                                           interpolation_order_z),
+            #                                          )
+            #                                         )
+            #               )
 
             pred_gt_tuples.append([join(output_folder, fname + ".nii.gz"),
                                    join(self.gt_niftis_folder, fname + ".nii.gz")])
@@ -252,21 +252,21 @@ class nnUNetTrainerCascadeFullRes(nnUNetTrainer):
 
         task = self.dataset_directory.split("/")[-1]
         job_name = self.experiment_name
-        _ = aggregate_scores(pred_gt_tuples, labels=list(range(self.num_classes)),
-                             json_output_file=join(output_folder, "summary.json"), json_name=job_name,
-                             json_author="Fabian", json_description="",
-                             json_task=task)
+        #_ = aggregate_scores(pred_gt_tuples, labels=list(range(self.num_classes)),
+        #                     json_output_file=join(output_folder, "summary.json"), json_name=job_name,
+        #                     json_author="Fabian", json_description="",
+        #                     json_task=task)
 
-        if run_postprocessing_on_folds:
-            # in the old nnunet we would stop here. Now we add a postprocessing. This postprocessing can remove everything
-            # except the largest connected component for each class. To see if this improves results, we do this for all
-            # classes and then rerun the evaluation. Those classes for which this resulted in an improved dice score will
-            # have this applied during inference as well
-            self.print_to_log_file("determining postprocessing")
-            determine_postprocessing(self.output_folder, self.gt_niftis_folder, validation_folder_name,
-                                     final_subf_name=validation_folder_name + "_postprocessed", debug=debug)
-            # after this the final predictions for the vlaidation set can be found in validation_folder_name_base + "_postprocessed"
-            # They are always in that folder, even if no postprocessing as applied!
+        #if run_postprocessing_on_folds:
+        #    # in the old nnunet we would stop here. Now we add a postprocessing. This postprocessing can remove everything
+        #    # except the largest connected component for each class. To see if this improves results, we do this for all
+        #    # classes and then rerun the evaluation. Those classes for which this resulted in an improved dice score will
+        #    # have this applied during inference as well
+        #    self.print_to_log_file("determining postprocessing")
+        #    determine_postprocessing(self.output_folder, self.gt_niftis_folder, validation_folder_name,
+        #                             final_subf_name=validation_folder_name + "_postprocessed", debug=debug)
+        #    # after this the final predictions for the vlaidation set can be found in validation_folder_name_base + "_postprocessed"
+        #    # They are always in that folder, even if no postprocessing as applied!
 
         # detemining postprocesing on a per-fold basis may be OK for this fold but what if another fold finds another
         # postprocesing to be better? In this case we need to consolidate. At the time the consolidation is going to be
