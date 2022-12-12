@@ -1,5 +1,8 @@
 There will be two working branches need to run nnUNet on OLCF, master branch (preprocessing, postprocessing, and inference) on Andes and summit branch (training)
 -Summit is ppc and dependency ITK isn't available to be installed on Summit, hence why we need to do everything else but training on Andes, which is x86
+--I have working Andes and Summit Miniconda and conda environments you can clone, if pip installing is not working
+--Andes /gpfs/alpine/bif141/proj-shared/irl1/andes/preprocess
+--Summit /gpfs/alpine/bif141/proj-shared/irl1/opence152_py38
 
 Preprocessing on Andes
 -Build Miniconda
