@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#BSUB -nnodes 1
+#BSUB -W 1:00
+#BSUB -P bif141
+#BSUB -alloc_flags "smt4 nvme"
+#BSUB -J ddp
+#BSUB -o ddp.%J
+#BSUB -q batch
+
+module load open-ce/1.5.2-py38-0
+conda activate /gpfs/alpine/bif141/proj-shared/irl1/opence152_py38
+
+export nnUNet_raw_data_base=/gpfs/alpine/bif141/proj-shared/irl1/raw_data
+export nnUNet_preprocessed=/gpfs/alpine/bif141/proj-shared/irl1/nnUNet/PREPROCESS
+export RESULTS_FOLDER=/gpfs/alpine/bif141/proj-shared/irl1/nnUNet/RESULTS
+
+export OMP_NUM_THREADS=1
+
+# grab nodecount
+nodes=($(cat ${LSB_DJOB_HOSTFILE} | sort | uniq | grep -v login | grep -v batch))
+nnodes=${#nodes[@]}
+
+jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 2 -a 2 -c 42 python /gpfs/alpine/bif141/proj-shared/irl1/nnUNet/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task999_bigger all --dbs

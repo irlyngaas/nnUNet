@@ -19,14 +19,64 @@ from batchgenerators.utilities.file_and_folder_operations import *
 from nnunet.run.default_configuration import get_default_configuration
 from nnunet.paths import default_plans_identifier
 from nnunet.run.load_pretrained_weights import load_pretrained_weights
-from nnunet.training.cascade_stuff.predict_next_stage import predict_next_stage
+#from nnunet.training.cascade_stuff.predict_next_stage import predict_next_stage
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
-from nnunet.training.network_training.nnUNetTrainerCascadeFullRes import nnUNetTrainerCascadeFullRes
-from nnunet.training.network_training.nnUNetTrainerV2_CascadeFullRes import nnUNetTrainerV2CascadeFullRes
+#from nnunet.training.network_training.nnUNetTrainerCascadeFullRes import nnUNetTrainerCascadeFullRes
+#from nnunet.training.network_training.nnUNetTrainerV2_CascadeFullRes import nnUNetTrainerV2CascadeFullRes
 from nnunet.utilities.task_name_id_conversion import convert_id_to_task_name
 
+from mpi4py import MPI
+import torch.distributed as dist
+import torch
+import subprocess
+from datetime import timedelta
 
-def main():
+def setup():
+    local_rank = None
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    world_size = comm.Get_size()
+    device_count = torch.cuda.device_count()
+    if rank == 0:
+        print('> initializing torch distributed ...', flush=True)
+    # Manually set the device ids.
+    if device_count > 0:
+        device = rank % device_count
+        if local_rank is not None:
+            assert local_rank == device, \
+                'expected local-rank to be the same as rank % device-count.'
+        else:
+            local_rank = device
+        torch.cuda.set_device(device)
+
+    master_addr = None
+    if rank == 0:
+        hostname_cmd = ["hostname -I"]
+        result = subprocess.check_output(hostname_cmd, shell=True)
+        master_addr = result.decode('utf-8').split()[0]
+
+    master_addr = comm.bcast(master_addr, root=0)
+    proc_name = MPI.Get_processor_name()
+    all_procs = comm.allgather(proc_name)
+    local_rank = sum([i == proc_name for i in all_procs[:rank]])
+    os.environ['RANK'] = str(rank)
+    os.environ['WORLD_SIZE'] = str(world_size)
+    os.environ['LOCAL_RANK'] = str(local_rank)
+    os.environ['MASTER_ADDR'] = master_addr
+    os.environ['MASTER_PORT'] = str(29500)
+    init_method = None
+    dist.init_process_group(
+        backend='nccl',
+        rank=rank,
+        world_size=world_size,
+        timeout=timedelta(minutes=10),
+        init_method=init_method)
+
+    return world_size, rank, local_rank
+
+
+
+def main(local_rank):
     parser = argparse.ArgumentParser()
     parser.add_argument("network")
     parser.add_argument("network_trainer")
@@ -47,7 +97,7 @@ def main():
                              "this is not necessary. Deterministic training will make you overfit to some random seed. "
                              "Don't use that.",
                         required=False, default=False, action="store_true")
-    parser.add_argument("--local_rank", default=0, type=int)
+    #parser.add_argument("--local_rank", default=0, type=int)
     parser.add_argument("--fp32", required=False, default=False, action="store_true",
                         help="disable mixed precision training and run old school fp32")
     parser.add_argument("--dbs", required=False, default=False, action="store_true", help="distribute batch size. If "
@@ -146,7 +196,7 @@ def main():
         assert issubclass(trainer_class,
                           nnUNetTrainer), "network_trainer was found but is not derived from nnUNetTrainer"
 
-    trainer = trainer_class(plans_file, fold, local_rank=args.local_rank, output_folder=output_folder_name,
+    trainer = trainer_class(plans_file, fold, local_rank=local_rank, output_folder=output_folder_name,
                             dataset_directory=dataset_directory, batch_dice=batch_dice, stage=stage,
                             unpack_data=decompress_data, deterministic=deterministic, fp16=not fp32,
                             distribute_batch_size=args.dbs)
@@ -192,4 +242,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    _, _, local_rank = setup()
+    main(local_rank)
