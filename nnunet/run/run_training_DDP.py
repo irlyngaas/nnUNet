@@ -28,8 +28,9 @@ from nnunet.utilities.task_name_id_conversion import convert_id_to_task_name
 from mpi4py import MPI
 import torch.distributed as dist
 import torch
-import subprocess
+#import subprocess
 from datetime import timedelta
+import socket
 
 def setup():
     local_rank = None
@@ -51,9 +52,12 @@ def setup():
 
     master_addr = None
     if rank == 0:
-        hostname_cmd = ["hostname -I"]
-        result = subprocess.check_output(hostname_cmd, shell=True)
-        master_addr = result.decode('utf-8').split()[0]
+        #hostname_cmd = ["hostname -I"]
+        #result = subprocess.check_output(hostname_cmd, shell=True)
+        #master_addr = result.decode('utf-8').split()[0]
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        master_addr = ip_address
 
     master_addr = comm.bcast(master_addr, root=0)
     proc_name = MPI.Get_processor_name()

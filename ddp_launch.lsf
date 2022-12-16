@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#BSUB -nnodes 1
+#BSUB -nnodes 2
 #BSUB -W 1:00
 #BSUB -P bif141
 #BSUB -alloc_flags "smt4 nvme"
@@ -9,7 +9,7 @@
 #BSUB -q batch
 
 module load open-ce/1.5.2-py38-0
-conda activate /gpfs/alpine/bif141/proj-shared/irl1/opence152_py38
+conda activate /gpfs/alpine/bif141/proj-shared/irl1/singleThreaded
 
 export nnUNet_raw_data_base=/gpfs/alpine/bif141/proj-shared/irl1/raw_data
 export nnUNet_preprocessed=/gpfs/alpine/bif141/proj-shared/irl1/nnUNet/PREPROCESS
@@ -21,4 +21,20 @@ export OMP_NUM_THREADS=1
 nodes=($(cat ${LSB_DJOB_HOSTFILE} | sort | uniq | grep -v login | grep -v batch))
 nnodes=${#nodes[@]}
 
-jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 2 -a 2 -c 42 python /gpfs/alpine/bif141/proj-shared/irl1/nnUNet/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task999_bigger all --dbs
+#jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 3 -a 3 -c 3 python /gpfs/alpine/bif141/proj-shared/irl1/nnUNet/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task901_BraTS all --dbs --use_compressed_data
+
+#WORKS
+#DBS splits batch size between number of processes
+#export nnUNet_def_n_proc=2
+#export nnUNet_n_proc_DA=2
+#jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 2 -a 2 -c 2 python /gpfs/alpine/bif141/proj-shared/irl1/nnUNet/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task901_BraTS all --dbs
+
+
+#WORKS
+#export nnUNet_def_n_proc=2
+#export nnUNet_n_proc_DA=2
+#jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 6 -a 6 -c 6 python /gpfs/alpine/bif141/proj-shared/irl1/nnUNet/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task901_BraTS all
+
+export nnUNet_def_n_proc=1
+export nnUNet_n_proc_DA=1
+jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 6 -a 6 -c 6 python /gpfs/alpine/bif141/proj-shared/irl1/nnUNet/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task901_BraTS all
