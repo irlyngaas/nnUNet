@@ -1,13 +1,18 @@
 There will be two working branches need to run nnUNet on OLCF, master branch (preprocessing, postprocessing, and inference) on Andes and summit branch (training)
+-Added a third working branch which replaces MultiThreaded Data Augmenter with SingleThreaded Data Augmenter
+--Ran into to core dumps using threaded python with multiple processes in DDP Jobs on Summit, use this when running into issues there
 -Summit is ppc and dependency ITK isn't available to be installed on Summit, hence why we need to do everything else but training on Andes, which is x86
---I have working Andes and Summit Miniconda and conda environments you can clone, if pip installing is not working
+--I have working Andes and Summit Miniconda and conda environments you can clone, if pip instal instructions(below) are not working
 --Andes /gpfs/alpine/bif141/proj-shared/irl1/andes/preprocess
---Summit /gpfs/alpine/bif141/proj-shared/irl1/opence152_py38
+--Summit Multithread Data Augmenter /gpfs/alpine/bif141/proj-shared/irl1/opence152_py38
+--Summit Singlethread Data Augmenter /gpfs/alpine/bif141/proj-shared/irl1/singleThreaded
+---Clone with conda create --clone ENV --prefix DEST
 
 Preprocessing on Andes
 -Build Miniconda
 --wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 --bash ./Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/conda
+---Create this in /gpfs/alpine/bif141 or use mine in /gpfs/alpine/bif141/proj-shared/andes
 --export PATH=$PWD/conda/bin:$PATH
 --eval "$($PWD/conda/bin/conda shell.bash hook)"
 --conda create -y --prefix=$PATH/preprocess
@@ -24,7 +29,7 @@ Preprocessing on Andes
 --export RESULTS_FOLDER=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/RESULTS
 
 -Run preprocessing
---python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 999 -pl3d ExperimentPlanner3D_v21 --verify_dataset_integrity
+--python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 901 -pl3d ExperimentPlanner3D_v21 --verify_dataset_integrity
 
 Notes::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -35,7 +40,6 @@ Experiment plans and preprocessed data go to $nnUNet_preprocessed
 -2D plans in $nnUNet_preprocessed/Task999_bigger/nnUNetPlansv2.1_plans_2D.pkl
 
 Plans for neural network are dynamically created based on data using the default experiment planner in ExperimentPlanner3D_v21
---Need to alter this file if you wanted to create your own experiment and not use dynamic planner
 plan = {
             'batch_size': batch_size,
             'num_pool_per_axis': network_num_pool_per_axis,
@@ -69,13 +73,15 @@ Training on Summit
 --export nnUNet_preprocessed=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/PREPROCESS
 --export RESULTS_FOLDER=/gpfs/alpine/bif141/proj-shared/$USER/nnUNet/RESULTS
 
--Run training on master branch
+-Run training on summit branch (Results will go to andes repo, andes and summit share filesystem)
 -- bsub ddp_launch.lsf
 ---Need to set paths in this script based on where your repos are located
+---Use summit_singleThreaded branch to run DDP on more than one needed to avoid core dumps
 
 Notes::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 2 -a 2 -c 42 python /gpfs/alpine/bif141/proj-shared/$USER/nnUNet_summit/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task999_bigger all --dbs
+jsrun --smpiargs="-disable_gpu_hooks" -n $nnodes -r 1 -g 6 -a 6 -c 6 python /gpfs/alpine/bif141/proj-shared/$USER/nnUNet_summit/nnunet/run/run_training_DDP.py  3d_fullres nnUNetTrainerV2_DDP Task901_BraTS all
+-- n - number of nodes (I have built in a way to brab this from BSUB argument at the top of lsf script)
 -- g - number of gpus (6 on Summit for max GPUs)
 -- a - number of task (6 on Summit for max GPUs, 1 GPU per Task)
 
