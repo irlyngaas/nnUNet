@@ -27,11 +27,15 @@ def pretend_to_be_other_trainer(folder, new_trainer_name, checkpoints=("model_be
         folds.append('all')
 
     for c in checkpoints:
+        print(c)
         for f in folds:
             checkpoint_file = join(folder, f, c)
             if isfile(checkpoint_file):
                 a = load_pickle(checkpoint_file)
                 a['name'] = new_trainer_name
+                a['init'] = a['init'][:2] + a['init'][3:]
+                a['init'] = a['init'][:8] + a['init'][9:]
+                print(a['name'])
                 save_pickle(a, checkpoint_file)
 
 
@@ -48,4 +52,8 @@ def main():
                                    'fold_X subfolders.')
     parser.add_argument('-tr', help='Name of the new trainer class')
     args = parser.parse_args()
+    print(args.i)
+    print(args.tr)
     pretend_to_be_other_trainer(args.i, args.tr)
+
+main()
