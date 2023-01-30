@@ -116,15 +116,18 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
         self.oversample_foreground_percent = oversample_percents[my_rank]
 
     def save_checkpoint(self, fname, save_optimizer=True):
-        if self.local_rank == 0:
+        #if self.local_rank == 0:
+        if dist.get_rank() == 0:
             super().save_checkpoint(fname, save_optimizer)
 
     def plot_progress(self):
-        if self.local_rank == 0:
+        #if self.local_rank == 0:
+        if dist.get_rank() == 0:
             super().plot_progress()
 
     def print_to_log_file(self, *args, also_print_to_console=True):
-        if self.local_rank == 0:
+        #if self.local_rank == 0:
+        if dist.get_rank() == 0:
             super().print_to_log_file(*args, also_print_to_console=also_print_to_console)
 
     def process_plans(self, plans):
@@ -151,7 +154,8 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
             if training:
                 self.dl_tr, self.dl_val = self.get_basic_generators()
                 if self.unpack_data:
-                    if self.local_rank == 0:
+                    #if self.local_rank == 0:
+                    if dist.get_rank() == 0:
                         print("unpacking dataset")
                         unpack_dataset(self.folder_with_preprocessed_data)
                         print("done")
@@ -320,7 +324,8 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
         we also need to make sure deep supervision in the network is enabled for training, thus the wrapper
         :return:
         """
-        if self.local_rank == 0:
+        #if self.local_rank == 0:
+        if dist.get_rank() == 0:
             self.save_debug_information()
 
         if not torch.cuda.is_available():
@@ -354,6 +359,15 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
         if not self.was_initialized:
             self.initialize(True)
 
+        data_per_iteration = self.batch_size *dist.get_world_size()
+        data_count = 1367
+        #num_b_epoch = int(epoch_data/data_per_iteration)
+        percentage_samples_per_iteration = data_per_iteration/data_count
+        self.print_to_log_file("\nSamples_per_iteration", data_per_iteration)
+        self.print_to_log_file("\nPercentage_data_per_iteration", percentage_samples_per_iteration)
+        self.print_to_log_file("\nPercentage_data_per_iteration x iteration = true_epochs")
+
+        self.num_batches_per_epoch = 100
         while self.epoch < self.max_num_epochs:
             self.print_to_log_file("\nepoch: ", self.epoch)
             epoch_start_time = time()
@@ -365,11 +379,13 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
             if self.use_progress_bar:
                 with trange(self.num_batches_per_epoch) as tbar:
                     for b in tbar:
-                        tbar.set_description("Epoch {}/{}".format(self.epoch+1, self.max_num_epochs))
+                        if dist.get_rank() == 0:
+                            tbar.set_description("Epoch {}/{}".format(self.epoch+1, self.max_num_epochs))
 
                         l = self.run_iteration(self.tr_gen, True)
 
-                        tbar.set_postfix(loss=l)
+                        if dist.get_rank() == 0:
+                            tbar.set_postfix(loss=l)
                         train_losses_epoch.append(l)
             else:
                 for _ in range(self.num_batches_per_epoch):
@@ -416,7 +432,8 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
 
         if self.save_final_checkpoint: self.save_checkpoint(join(self.output_folder, "model_final_checkpoint.model"))
 
-        if self.local_rank == 0:
+        #if self.local_rank == 0:
+        if dist.get_rank() == 0:
             # now we can delete latest as it will be identical with final
             if isfile(join(self.output_folder, "model_latest.model")):
                 os.remove(join(self.output_folder, "model_latest.model"))
@@ -548,7 +565,8 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
 
         distributed.barrier()
 
-        if self.local_rank == 0:
+        #if self.local_rank == 0:
+        if dist.get_rank() == 0:
             # evaluate raw predictions
             self.print_to_log_file("evaluation of raw predictions")
             task = self.dataset_directory.split("/")[-1]
