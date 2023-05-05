@@ -56,15 +56,15 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
             plans_file, fold, local_rank, output_folder, dataset_directory, batch_dice, stage, unpack_data,
             deterministic, distribute_batch_size, fp16)
         self.distribute_batch_size = distribute_batch_size
-        np.random.seed(local_rank)
-        torch.manual_seed(local_rank)
+        np.random.seed(dist.get_rank())
+        torch.manual_seed(dist.get_rank())
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(local_rank)
         self.local_rank = local_rank
 
-        if torch.cuda.is_available():
-            torch.cuda.set_device(local_rank)
-        dist.init_process_group(backend='nccl', init_method='env://')
+        #if torch.cuda.is_available():
+        #    torch.cuda.set_device(local_rank)
+        #dist.init_process_group(backend='nccl', init_method='env://')
 
         self.loss = None
         self.ce_loss = RobustCrossEntropyLoss()
@@ -116,15 +116,15 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
         self.oversample_foreground_percent = oversample_percents[my_rank]
 
     def save_checkpoint(self, fname, save_optimizer=True):
-        if self.local_rank == 0:
+        if dist.get_rank() == 0:
             super().save_checkpoint(fname, save_optimizer)
 
     def plot_progress(self):
-        if self.local_rank == 0:
+        if dist.get_rank() == 0:
             super().plot_progress()
 
     def print_to_log_file(self, *args, also_print_to_console=True):
-        if self.local_rank == 0:
+        if dist.get_rank() == 0:
             super().print_to_log_file(*args, also_print_to_console=also_print_to_console)
 
     def process_plans(self, plans):
@@ -151,7 +151,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
             if training:
                 self.dl_tr, self.dl_val = self.get_basic_generators()
                 if self.unpack_data:
-                    if self.local_rank == 0:
+                    if dist.get_rank() == 0:
                         print("unpacking dataset")
                         unpack_dataset(self.folder_with_preprocessed_data)
                         print("done")
@@ -320,7 +320,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
         we also need to make sure deep supervision in the network is enabled for training, thus the wrapper
         :return:
         """
-        if self.local_rank == 0:
+        if dist.get_rank() == 0:
             self.save_debug_information()
 
         if not torch.cuda.is_available():
@@ -416,7 +416,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
 
         if self.save_final_checkpoint: self.save_checkpoint(join(self.output_folder, "model_final_checkpoint.model"))
 
-        if self.local_rank == 0:
+        if dist.get_rank() == 0:
             # now we can delete latest as it will be identical with final
             if isfile(join(self.output_folder, "model_latest.model")):
                 os.remove(join(self.output_folder, "model_latest.model"))
@@ -489,7 +489,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
         results = []
 
         all_keys = list(self.dataset_val.keys())
-        my_keys = all_keys[self.local_rank::dist.get_world_size()]
+        my_keys = all_keys[dist.get_rank()::dist.get_world_size()]
         # we cannot simply iterate over all_keys because we need to know pred_gt_tuples and valid_labels of all cases
         # for evaluation (which is done by local rank 0)
         for k in all_keys:
@@ -548,7 +548,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
 
         distributed.barrier()
 
-        if self.local_rank == 0:
+        if dist.get_rank() == 0:
             # evaluate raw predictions
             self.print_to_log_file("evaluation of raw predictions")
             task = self.dataset_directory.split("/")[-1]

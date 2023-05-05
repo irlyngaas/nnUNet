@@ -41,6 +41,7 @@ def setup():
     rank = comm.Get_rank()
     world_size = comm.Get_size()
     device_count = torch.cuda.device_count()
+    print(device_count, flush=True)
     if rank == 0:
         print('> initializing torch distributed ...', flush=True)
     # Manually set the device ids.
@@ -54,22 +55,22 @@ def setup():
         torch.cuda.set_device(device)
 
     master_addr = None
-    if rank == 0:
-        #hostname_cmd = ["hostname -I"]
-        #result = subprocess.check_output(hostname_cmd, shell=True)
-        #master_addr = result.decode('utf-8').split()[0]
-        hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
-        master_addr = ip_address
+    #if rank == 0:
+    #    #hostname_cmd = ["hostname -I"]
+    #    #result = subprocess.check_output(hostname_cmd, shell=True)
+    #    #master_addr = result.decode('utf-8').split()[0]
+    #    hostname = socket.gethostname()
+    #    ip_address = socket.gethostbyname(hostname)
+    #    master_addr = ip_address
 
-    master_addr = comm.bcast(master_addr, root=0)
-    proc_name = MPI.Get_processor_name()
-    all_procs = comm.allgather(proc_name)
-    local_rank = sum([i == proc_name for i in all_procs[:rank]])
+    #master_addr = comm.bcast(master_addr, root=0)
+    #proc_name = MPI.Get_processor_name()
+    #all_procs = comm.allgather(proc_name)
+    #local_rank = sum([i == proc_name for i in all_procs[:rank]])
     os.environ['RANK'] = str(rank)
     os.environ['WORLD_SIZE'] = str(world_size)
     os.environ['LOCAL_RANK'] = str(local_rank)
-    os.environ['MASTER_ADDR'] = master_addr
+    os.environ['MASTER_ADDR'] = os.environ["MASTER_ADDR"]
     os.environ['MASTER_PORT'] = str(29500)
     init_method = None
     dist.init_process_group(
