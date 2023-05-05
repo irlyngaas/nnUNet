@@ -285,27 +285,34 @@ class nnUNetTrainerV2(nnUNetTrainer):
         if self.fold == "all":
             # if fold==all then we use all images for training and validation
             tr_keys = val_keys = list(self.dataset.keys())
+            #Distributing keys amongst ranks rather than giving all keys to all ranks
+            #all_keys = list(self.dataset.keys())
+            #tr_keys = val_keys = all_keys[dist.get_rank()::dist.get_world_size()]
         else:
             splits_file = join(self.dataset_directory, "splits_final.pkl")
 
             # if the split file does not exist we need to create it
             if not isfile(splits_file):
-                self.print_to_log_file("Creating new 5-fold cross-validation split...")
-                splits = []
-                all_keys_sorted = np.sort(list(self.dataset.keys()))
-                kfold = KFold(n_splits=5, shuffle=True, random_state=12345)
-                for i, (train_idx, test_idx) in enumerate(kfold.split(all_keys_sorted)):
-                    train_keys = np.array(all_keys_sorted)[train_idx]
-                    test_keys = np.array(all_keys_sorted)[test_idx]
-                    splits.append(OrderedDict())
-                    splits[-1]['train'] = train_keys
-                    splits[-1]['val'] = test_keys
-                save_pickle(splits, splits_file)
+            #Making split will fail with DDP unless we only allow one rank to do it
+                if dist.get_rank() == 0:
+                    self.print_to_log_file("Creating new 5-fold cross-validation split...")
+                    splits = []
+                    all_keys_sorted = np.sort(list(self.dataset.keys()))
+                    kfold = KFold(n_splits=5, shuffle=True, random_state=12345)
+                    for i, (train_idx, test_idx) in enumerate(kfold.split(all_keys_sorted)):
+                        train_keys = np.array(all_keys_sorted)[train_idx]
+                        test_keys = np.array(all_keys_sorted)[test_idx]
+                        splits.append(OrderedDict())
+                        splits[-1]['train'] = train_keys
+                        splits[-1]['val'] = test_keys
+                    save_pickle(splits, splits_file)
 
-            else:
-                self.print_to_log_file("Using splits from existing split file:", splits_file)
-                splits = load_pickle(splits_file)
-                self.print_to_log_file("The split file contains %d splits." % len(splits))
+            #Barrier to sync ranks after makign split file, only needed when there is no split file
+            dist.barrier()
+
+            self.print_to_log_file("Using splits from existing split file:", splits_file)
+            splits = load_pickle(splits_file)
+            self.print_to_log_file("The split file contains %d splits." % len(splits))
 
             self.print_to_log_file("Desired fold for training: %d" % self.fold)
             if self.fold < len(splits):
