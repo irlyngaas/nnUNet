@@ -165,7 +165,8 @@ class Upsample(nn.Module):
 
 
 class Generic_UNet(SegmentationNetwork):
-    DEFAULT_BATCH_SIZE_3D = 2
+    #DEFAULT_BATCH_SIZE_3D = 2
+    DEFAULT_BATCH_SIZE_3D = 1
     DEFAULT_PATCH_SIZE_3D = (64, 192, 160)
     SPACING_FACTOR_BETWEEN_STAGES = 2
     BASE_NUM_FEATURES_3D = 30
@@ -180,6 +181,9 @@ class Generic_UNet(SegmentationNetwork):
 
     use_this_for_batch_size_computation_2D = 19739648
     use_this_for_batch_size_computation_3D = 520000000  # 505789440
+    #use_this_for_batch_size_computation_3D = 780000000 #1.5x
+    #use_this_for_batch_size_computation_3D = 650000000 #1.25x
+    #use_this_for_batch_size_computation_3D = 572000000 #1.1x
 
     def __init__(self, input_channels, base_num_features, num_classes, num_pool, num_conv_per_stage=2,
                  feat_map_mul_on_downscale=2, conv_op=nn.Conv2d,

@@ -122,6 +122,8 @@ def main():
                         help='Predictions are done with mixed precision by default. This improves speed and reduces '
                              'the required vram. If you want to disable mixed precision you can set this flag. Note '
                              'that this is not recommended (mixed precision is ~2x faster!)')
+    parser.add_argument('-run_name', type=str, required=False, default=None,
+                        help='Store run in a different location')
 
     args = parser.parse_args()
     input_folder = args.input_folder
@@ -211,7 +213,7 @@ def main():
         trainer = trainer_class_name
 
     model_folder_name = join(network_training_output_dir, model, task_name, trainer + "__" +
-                              args.plans_identifier)
+                              args.plans_identifier, args.run_name)
     print("using model stored in ", model_folder_name)
     assert isdir(model_folder_name), "model output folder not found. Expected: %s" % model_folder_name
 

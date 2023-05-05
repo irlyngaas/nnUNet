@@ -33,6 +33,8 @@ import torch
 from datetime import timedelta
 import socket
 
+import multiprocessing as mp
+
 def setup():
     local_rank = None
     comm = MPI.COMM_WORLD
@@ -169,6 +171,9 @@ def main(local_rank):
     # force_separate_z = args.force_separate_z
     fp32 = args.fp32
     disable_postprocessing_on_folds = args.disable_postprocessing_on_folds
+
+    #mp.set_start_method('spawn')
+    #mp.set_start_method('forkserver')
 
     if not task.startswith("Task"):
         task_id = int(task)
