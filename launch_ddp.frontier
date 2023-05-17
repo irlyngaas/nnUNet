@@ -1,0 +1,51 @@
+#!/bin/bash
+
+#SBATCH -A STF006
+#SBATCH -J ddp
+#SBATCH -o ddp-%j.o
+#SBATCH -e ddp-%j.e
+#SBATCH -t 02:00:00
+#SBATCH -p batch
+#SBATCH -N 2
+
+set +x
+source /lustre/orion/proj-shared/stf006/irl1/conda/etc/profile.d/conda.sh
+conda activate /lustre/orion/stf006/proj-shared/irl1/t1
+export LD_PRELOAD="/usr/lib64/libcrypto.so /usr/lib64/libssh.so.4 /usr/lib64/libssl.so.1.1"
+
+export nnUNet_raw_data_base=/lustre/orion/stf006/proj-shared/irl1/raw_data
+export nnUNet_preprocessed=/lustre/orion/stf006/proj-shared/irl1/preprocessed_data
+export RESULTS_FOLDER=/lustre/orion/stf006/proj-shared/irl1/RESULTS
+
+module load PrgEnv-gnu
+module load gcc/11.2.0
+module load rocm/5.4.0
+
+# setup hostfile
+HOSTS=.hosts-job$SLURM_JOB_ID
+HOSTFILE=hostfile.txt
+srun hostname > $HOSTS
+sed 's/$/ slots=8/' $HOSTS > $HOSTFILE
+
+scontrol show hostnames $SLURM_NODELIST > job.node.list
+input="./job.node.list"
+readarray -t arr <"$input"
+first=${arr[0]}
+echo "first=" $first
+ips=`ssh $first hostname -I`
+read -ra arr <<< ${ips}
+export MASTER_ADDR=${arr[0]}
+echo "MASTER_ADDR=" $MASTER_ADDR
+
+ranks_per_node=8
+gpus_per_rank=$((8/$ranks_per_node))
+ranks_total=$(($ranks_per_node*$SLURM_JOB_NUM_NODES))
+
+export OMP_NUM_THREADS=2
+
+#export nnUNet_def_n_proc=1
+#export nnUNet_n_proc_DA=4
+#MIOPEN_ENABLE_LOGGING=1 MIOPEN_LOG_LEVEL=7 MIOPEN_ENABLE_LOGGING_CMD=1 ROCBLAS_LAYER=2 MIOPEN_DEBUG_FIND_ONLY_SOLVER=ConvDirectNaiveConvFwd srun -n 1 -c 1 --ntasks-per-node=1 --gpus-per-task=1 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task932_MBrain 0 -run_name TEST --use_compressed_data --master_addr=$MASTER_ADDR
+#MIOPEN_ENABLE_LOGGING=1 MIOPEN_LOG_LEVEL=7 MIOPEN_ENABLE_LOGGING_CMD=1 ROCBLAS_LAYER=2 MIOPEN_USER_DB_PATH="/lustre/orion/stf006/proj-shared/irl1" srun -n 1 -c 1 --ntasks-per-node=1 --gpus-per-task=1 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task932_MBrain 0 -run_name TEST --use_compressed_data --master_addr=$MASTER_ADDR
+MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 4 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task932_MBrain 0 -run_name TEST --use_compressed_data --master_addr=$MASTER_ADDR
+#srun -n $ranks_total -c 2 --ntasks-per-node=8 --gpus-per-task=1 --gpu-bind=closest python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task932_MBrain 0 -run_name TEST --use_compressed_data --master_addr=$MASTER_ADDR

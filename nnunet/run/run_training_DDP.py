@@ -35,12 +35,15 @@ import socket
 
 import multiprocessing as mp
 
-def setup():
+def setup(master_addr):
+    print("MASTERP", flush=True)
+    print(master_addr, flush=True)
     local_rank = None
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     world_size = comm.Get_size()
     device_count = torch.cuda.device_count()
+    print("DEVICE_COUNT", flush=True)
     print(device_count, flush=True)
     if rank == 0:
         print('> initializing torch distributed ...', flush=True)
@@ -54,7 +57,7 @@ def setup():
             local_rank = device
         torch.cuda.set_device(device)
 
-    master_addr = None
+    #master_addr = None
     #if rank == 0:
     #    #hostname_cmd = ["hostname -I"]
     #    #result = subprocess.check_output(hostname_cmd, shell=True)
@@ -69,8 +72,8 @@ def setup():
     #local_rank = sum([i == proc_name for i in all_procs[:rank]])
     os.environ['RANK'] = str(rank)
     os.environ['WORLD_SIZE'] = str(world_size)
-    os.environ['LOCAL_RANK'] = str(local_rank)
-    os.environ['MASTER_ADDR'] = os.environ["MASTER_ADDR"]
+    os.environ['LOCAL_RANK'] = str(world_size % 8)
+    os.environ['MASTER_ADDR'] = master_addr
     os.environ['MASTER_PORT'] = str(29500)
     init_method = None
     dist.init_process_group(
@@ -84,7 +87,7 @@ def setup():
 
 
 
-def main(local_rank):
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("network")
     parser.add_argument("network_trainer")
@@ -152,8 +155,11 @@ def main(local_rank):
                              'Optional. Beta. Use with caution.')
     parser.add_argument('-run_name', type=str, required=False, default=None,
                         help='Store run in a different location')
+    parser.add_argument('--master_addr', type=str, required=False, default=None,
+                        help='Master Address from batch script')
 
     args = parser.parse_args()
+    _, _, local_rank = setup(args.master_addr)
 
     task = args.task
     fold = args.fold
@@ -259,5 +265,4 @@ def main(local_rank):
 
 
 if __name__ == "__main__":
-    _, _, local_rank = setup()
-    main(local_rank)
+    main()
