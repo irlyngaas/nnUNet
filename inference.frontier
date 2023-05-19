@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#SBATCH -A STF006
+#SBATCH -J ddp
+#SBATCH -o inference-%j.o
+#SBATCH -e inference-%j.e
+#SBATCH -t 02:00:00
+#SBATCH -p batch
+#SBATCH -N 1
+
+set +x
+source /lustre/orion/proj-shared/stf006/irl1/conda/etc/profile.d/conda.sh
+conda activate /lustre/orion/stf006/proj-shared/irl1/t2
+export LD_PRELOAD="/usr/lib64/libcrypto.so /usr/lib64/libssh.so.4 /usr/lib64/libssl.so.1.1"
+
+export nnUNet_raw_data_base=/lustre/orion/stf006/proj-shared/irl1/raw_data
+export nnUNet_preprocessed=/lustre/orion/stf006/proj-shared/irl1/preprocessed_data
+export RESULTS_FOLDER=/lustre/orion/stf006/proj-shared/irl1/RESULTS
+
+module load PrgEnv-gnu
+module load gcc/11.2.0
+module load rocm/5.4.0
+
+export OMP_NUM_THREADS=2
+
+#MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun python python nnunet/inference/predict_simple.py -i ../raw_data/nnUNet_raw_data/Task932_MBrain/imagesTr/ -o ./OUTPUT_FOLDER/ -t 932 -m 3d_fullres -tr nnUNetTrainerV2_DDP -f fold_0 -chk model_ep_064 -run_name 50_node
+srun -n 1 -c 32 python nnunet/inference/predict_simple.py -i ../raw_data/nnUNet_raw_data/Task932_MBrain/imagesTr/ -o ./OUTPUT_FOLDER/ -t 932 -m 3d_fullres -tr nnUNetTrainerV2_DDP -f 0 -chk model_final_checkpoint -run_name 50_node
+

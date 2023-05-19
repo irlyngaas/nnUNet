@@ -145,6 +145,7 @@ def export_pretrained_model(task_name: str, output_file: str,
                             nnunet_trainer=default_trainer,
                             nnunet_trainer_cascade=default_cascade_trainer,
                             plans_identifier=default_plans_identifier,
+                            run_name="",
                             folds=(0, 1, 2, 3, 4), strict=True):
     zipf = zipfile.ZipFile(output_file, 'w', zipfile.ZIP_DEFLATED)
     trainer_output_dir = nnunet_trainer + "__" + plans_identifier
@@ -152,7 +153,7 @@ def export_pretrained_model(task_name: str, output_file: str,
 
     for m in models:
         to = trainer_output_dir_cascade if m == "3d_cascade_fullres" else trainer_output_dir
-        expected_output_folder = join(network_training_output_dir, m, task_name, to)
+        expected_output_folder = join(network_training_output_dir, m, task_name, to, run_name)
         if not isdir(expected_output_folder):
             if strict:
                 raise RuntimeError("Task %s is missing the model %s" % (task_name, m))
@@ -186,14 +187,14 @@ def export_pretrained_model(task_name: str, output_file: str,
 
         zipf.write(join(expected_output_folder, "plans.pkl"),
                    os.path.relpath(join(expected_output_folder, "plans.pkl"), network_training_output_dir))
-        if not isfile(join(expected_output_folder, "postprocessing.json")):
-            if strict:
-                raise RuntimeError('postprocessing.json missing. Run nnUNet_determine_postprocessing or disable strict')
-            else:
-                print('WARNING: postprocessing.json missing')
-        else:
-            zipf.write(join(expected_output_folder, "postprocessing.json"),
-                       os.path.relpath(join(expected_output_folder, "postprocessing.json"), network_training_output_dir))
+        #if not isfile(join(expected_output_folder, "postprocessing.json")):
+        #    if strict:
+        #        raise RuntimeError('postprocessing.json missing. Run nnUNet_determine_postprocessing or disable strict')
+        #    else:
+        #        print('WARNING: postprocessing.json missing')
+        #else:
+        #    zipf.write(join(expected_output_folder, "postprocessing.json"),
+        #               os.path.relpath(join(expected_output_folder, "postprocessing.json"), network_training_output_dir))
 
     ensemble_dir = join(network_training_output_dir, 'ensembles', task_name)
     if not isdir(ensemble_dir):
@@ -234,6 +235,8 @@ def export_entry_point():
     parser.add_argument('--disable_strict', action='store_true', help='set this if you want to allow skipping '
                                                                      'missing things', required=False)
     parser.add_argument('-f', nargs='+', help='Folds. Default: 0 1 2 3 4', required=False, default=[0, 1, 2, 3, 4])
+    parser.add_argument('-run_name', type=str, required=False, default=None,
+                        help='Store run in a different location')
     args = parser.parse_args()
 
     folds = args.f
@@ -250,7 +253,7 @@ def export_entry_point():
             raise e
         taskname = convert_id_to_task_name(taskid)
 
-    export_pretrained_model(taskname, args.o, args.m, args.tr, args.trc, args.pl, strict=not args.disable_strict,
+    export_pretrained_model(taskname, args.o, args.m, args.tr, args.trc, args.pl, args.run_name, strict=not args.disable_strict,
                             folds=folds)
 
 
