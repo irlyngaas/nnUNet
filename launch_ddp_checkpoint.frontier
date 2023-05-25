@@ -6,7 +6,7 @@
 #SBATCH -e ddp-%j.e
 #SBATCH -t 02:00:00
 #SBATCH -p batch
-#SBATCH -N 200
+#SBATCH -N 50
 
 set +x
 source /lustre/orion/proj-shared/stf006/irl1/conda/etc/profile.d/conda.sh
@@ -44,8 +44,7 @@ ranks_total=$(($ranks_per_node*$SLURM_JOB_NUM_NODES))
 #64 core total (w/ 2 hw threads per core)
 #4 cpu_rank x 8 = 32 * 2 OMP thread = 64 
 #Need to test this configuration
-#Don't think changing to 2 matters
-export OMP_NUM_THREADS=1
+export OMP_NUM_THREADS=2
 
 #CPU Threading of unpacing npz files -- Not done, consider adding
 #export nnUNet_def_n_proc=1
@@ -53,4 +52,4 @@ export OMP_NUM_THREADS=1
 #export nnUNet_n_proc_DA=4
 
 # 7 cpus-per-task because 1 cpu kept for OS
-MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -run_name 200_node --use_compressed_data --master_addr=$MASTER_ADDR
+MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -c -run_name 50_node --use_compressed_data --master_addr=$MASTER_ADDR

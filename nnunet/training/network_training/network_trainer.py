@@ -95,8 +95,8 @@ class NetworkTrainer(object):
         self.train_loss_MA_alpha = 0.93  # alpha * old + (1-alpha) * new
         self.train_loss_MA_eps = 5e-4  # new MA must be at least this much better (smaller)
         self.max_num_epochs = 1000
-        self.num_batches_per_epoch = 250
-        self.num_val_batches_per_epoch = 50
+        self.num_batches_per_epoch = 100
+        self.num_val_batches_per_epoch = 20
         self.also_val_in_tr_mode = False
         self.lr_threshold = 1e-6  # the network will not terminate training if the lr is still above this threshold
 
@@ -111,6 +111,7 @@ class NetworkTrainer(object):
         self.all_val_losses_tr_mode = []
         self.all_val_eval_metrics = []  # does not have to be used
         self.epoch = 0
+        self.all_epoch_times = []
         self.log_file = None
         self.deterministic = deterministic
 
@@ -119,8 +120,8 @@ class NetworkTrainer(object):
             self.use_progress_bar = bool(int(os.environ['nnunet_use_progress_bar']))
 
         ################# Settings for saving checkpoints ##################################
-        self.save_every = 50
-        self.save_latest_only = True  # if false it will not store/overwrite _latest but separate files each
+        self.save_every = 5
+        self.save_latest_only = False  # if false it will not store/overwrite _latest but separate files each
         # time an intermediate checkpoint is created
         self.save_intermediate_checkpoints = True  # whether or not to save checkpoint_latest
         self.save_best_checkpoint = True  # whether or not to save the best checkpoint according to self.best_val_eval_criterion_MA
@@ -279,7 +280,7 @@ class NetworkTrainer(object):
             'optimizer_state_dict': optimizer_state_dict,
             'lr_scheduler_state_dict': lr_sched_state_dct,
             'plot_stuff': (self.all_tr_losses, self.all_val_losses, self.all_val_losses_tr_mode,
-                           self.all_val_eval_metrics),
+                           self.all_val_eval_metrics, self.all_epoch_times),
             'best_stuff' : (self.best_epoch_based_on_MA_tr_loss, self.best_MA_tr_loss_for_patience, self.best_val_eval_criterion_MA)}
         if self.amp_grad_scaler is not None:
             save_this['amp_grad_scaler'] = self.amp_grad_scaler.state_dict()
@@ -376,7 +377,7 @@ class NetworkTrainer(object):
             if issubclass(self.lr_scheduler.__class__, _LRScheduler):
                 self.lr_scheduler.step(self.epoch)
 
-        self.all_tr_losses, self.all_val_losses, self.all_val_losses_tr_mode, self.all_val_eval_metrics = checkpoint[
+        self.all_tr_losses, self.all_val_losses, self.all_val_losses_tr_mode, self.all_val_eval_metrics, self.all_epoch_times = checkpoint[
             'plot_stuff']
 
         # load best loss (if present)
@@ -481,16 +482,17 @@ class NetworkTrainer(object):
 
             self.update_train_loss_MA()  # needed for lr scheduler and stopping of training
 
+            epoch_end_time = time()
+            self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
+            self.all_epoch_times.append(epoch_end_time - epoch_start_time)
             continue_training = self.on_epoch_end()
 
-            epoch_end_time = time()
 
             if not continue_training:
                 # allows for early stopping
                 break
 
             self.epoch += 1
-            self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
 
         self.epoch -= 1  # if we don't do this we can get a problem with loading model_final_checkpoint.
 

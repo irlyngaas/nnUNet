@@ -20,7 +20,8 @@ def pretend_to_be_nnUNetTrainer(folder, checkpoints=("model_best.model.pkl", "mo
     pretend_to_be_other_trainer(folder, "nnUNetTrainer", checkpoints)
 
 
-def pretend_to_be_other_trainer(folder, new_trainer_name, checkpoints=("model_best.model.pkl", "model_final_checkpoint.model.pkl")):
+#def pretend_to_be_other_trainer(folder, new_trainer_name, checkpoints=("model_ep064.model.pkl", "model_final_checkpoint.model.pkl")):
+def pretend_to_be_other_trainer(folder, new_trainer_name, checkpoints=("model_ep_064.model.pkl", "model_ep_074.model.pkl")):
     folds = subdirs(folder, prefix="fold_", join=False)
 
     if isdir(join(folder, 'all')):

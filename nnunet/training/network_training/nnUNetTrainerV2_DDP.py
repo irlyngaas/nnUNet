@@ -401,16 +401,17 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
 
             self.update_train_loss_MA()  # needed for lr scheduler and stopping of training
 
+            epoch_end_time = time()
+            self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
+            self.all_epoch_times.append(epoch_end_time - epoch_start_time)
             continue_training = self.on_epoch_end()
 
-            epoch_end_time = time()
 
             if not continue_training:
                 # allows for early stopping
                 break
 
             self.epoch += 1
-            self.print_to_log_file("This epoch took %f s\n" % (epoch_end_time - epoch_start_time))
 
         self.epoch -= 1  # if we don't do this we can get a problem with loading model_final_checkpoint.
 
@@ -669,7 +670,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
             if issubclass(self.lr_scheduler.__class__, _LRScheduler):
                 self.lr_scheduler.step(self.epoch)
 
-        self.all_tr_losses, self.all_val_losses, self.all_val_losses_tr_mode, self.all_val_eval_metrics = checkpoint[
+        self.all_tr_losses, self.all_val_losses, self.all_val_losses_tr_mode, self.all_val_eval_metrics, self.all_epoch_times = checkpoint[
             'plot_stuff']
 
         # after the training is done, the epoch is incremented one more time in my old code. This results in

@@ -1,0 +1,8 @@
+#set conda environment
+export PATH=$PWD/conda/bin:$PATH
+eval "$($PWD/conda/bin/conda shell.bash hook)"
+conda activate ./t2
+export LD_PRELOAD="/usr/lib64/libcrypto.so /usr/lib64/libssh.so.4 /usr/lib64/libssl.so.1.1"
+
+#change trainer for inference
+python nnunet/inference/change_trainer.py -i /lustre/orion/stf006/proj-shared/irl1/RESULTS/nnUNet/3d_fullres/Task932_MBrain/nnUNetTrainerV2_DDP__nnUNetPlansv2.1/50_node -tr 'nnUNetTrainerV2'
