@@ -180,8 +180,8 @@ class Generic_UNet(SegmentationNetwork):
     MAX_FILTERS_2D = 480
 
     use_this_for_batch_size_computation_2D = 19739648
-    #use_this_for_batch_size_computation_3D = 520000000  # 505789440
-    use_this_for_batch_size_computation_3D = 780000000 #1.5x
+    use_this_for_batch_size_computation_3D = 520000000  # 505789440
+    #use_this_for_batch_size_computation_3D = 780000000 #1.5x
     #use_this_for_batch_size_computation_3D = 910000000 #1.75x
     #use_this_for_batch_size_computation_3D = 1040000000 #2x
     #use_this_for_batch_size_computation_3D = 2080000000 #4x

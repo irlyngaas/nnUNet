@@ -4,7 +4,7 @@
 #SBATCH -J ddp
 #SBATCH -o preprocess-%j.o
 #SBATCH -e preprocess-%j.e
-#SBATCH -t 00:20:00
+#SBATCH -t 02:00:00
 #SBATCH -p batch
 #SBATCH -N 1
 
@@ -21,4 +21,4 @@ module load PrgEnv-gnu
 module load gcc/11.2.0
 module load rocm/5.4.0
 
-srun python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 932 -pl3d ExperimentPlanner3D_v21 -no_pp
+srun python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 934 -pl3d ExperimentPlanner3D_v21

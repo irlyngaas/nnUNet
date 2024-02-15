@@ -6,7 +6,7 @@
 #SBATCH -e ddp-%j.e
 #SBATCH -t 02:00:00
 #SBATCH -p batch
-#SBATCH -N 50
+#SBATCH -N 100
 
 set +x
 source /lustre/orion/proj-shared/stf006/irl1/conda/etc/profile.d/conda.sh
@@ -44,12 +44,28 @@ ranks_total=$(($ranks_per_node*$SLURM_JOB_NUM_NODES))
 #64 core total (w/ 2 hw threads per core)
 #4 cpu_rank x 8 = 32 * 2 OMP thread = 64 
 #Need to test this configuration
-export OMP_NUM_THREADS=2
+export OMP_NUM_THREADS=1
 
 #CPU Threading of unpacing npz files -- Not done, consider adding
 #export nnUNet_def_n_proc=1
 #Default value of data augmentation threads = 12, needs testing
 #export nnUNet_n_proc_DA=4
 
+#export NCCL_SOCKET_IFNAME=hsn
+#export NCCL_PROTO=Simple
+#export NCCL_DEBUG=info
+#export FI_CXI_ATS=0
+#export LD_LIBRARY_PATH=/opt/rocm-5.4.0/rccl/build:$PWD/../aws-ofi-rccl/src/.libs/:/opt/cray/libfabric/1.15.2.0/lib64/:/opt/rocm-5.4.0/lib
+#export FI_LOG_LEVEL=info
+#export NCCL_NET_GDR_LEVEL=3
+
 # 7 cpus-per-task because 1 cpu kept for OS
-MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -c -run_name 50_node --use_compressed_data --master_addr=$MASTER_ADDR
+#MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -c -run_name 100_node --use_compressed_data --master_addr=$MASTER_ADDR
+
+#Don't use compressed data anymore
+MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -c -run_name 100_node --master_addr=$MASTER_ADDR
+
+
+
+
+

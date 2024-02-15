@@ -21,8 +21,9 @@ module load PrgEnv-gnu
 module load gcc/11.2.0
 module load rocm/5.4.0
 
-export OMP_NUM_THREADS=2
+export OMP_NUM_THREADS=1
 
 #MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun python python nnunet/inference/predict_simple.py -i ../raw_data/nnUNet_raw_data/Task932_MBrain/imagesTr/ -o ./OUTPUT_FOLDER/ -t 932 -m 3d_fullres -tr nnUNetTrainerV2_DDP -f fold_0 -chk model_ep_064 -run_name 50_node
-srun -n 1 -c 32 python nnunet/inference/predict_simple.py -i ../raw_data/nnUNet_raw_data/Task932_MBrain/imagesTr/ -o ./OUTPUT_FOLDER/ -t 932 -m 3d_fullres -tr nnUNetTrainerV2_DDP -f 0 -chk model_final_checkpoint -run_name 50_node
+#MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n 1 -c 32 python nnunet/inference/predict_simple.py -i ../raw_data/nnUNet_raw_data/Task932_MBrain/imagesTr/ -o ./OUTPUT_FOLDER2/ -t 932 -m 3d_fullres -tr nnUNetTrainerV2_DDP -f 0 -chk model_ep_074 -run_name 50_node --all_in_gpu True --num_parts 8  --part_id 0
+MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n 1 -c 32 python nnunet/inference/predict_simple.py -i ../raw_data/nnUNet_raw_data/Task933_MBrainLat/imagesTr/ -o ./OUTPUT_LAT_100_whiteboard/ -t 933 -m 3d_fullres -tr nnUNetTrainerV2_DDP -f 0 -chk model_latest -run_name 100_node --all_in_gpu True --num_parts 8  --part_id 0
 

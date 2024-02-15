@@ -6,7 +6,7 @@
 #SBATCH -e ddp-%j.e
 #SBATCH -t 02:00:00
 #SBATCH -p batch
-#SBATCH -N 200
+#SBATCH -N 128
 
 set +x
 source /lustre/orion/proj-shared/stf006/irl1/conda/etc/profile.d/conda.sh
@@ -52,5 +52,14 @@ export OMP_NUM_THREADS=1
 #Default value of data augmentation threads = 12, needs testing
 #export nnUNet_n_proc_DA=4
 
+#export NCCL_SOCKET_IFNAME=hsn
+#export NCCL_PROTO=Simple
+#export NCCL_DEBUG=info
+#export FI_CXI_ATS=0
+#export LD_LIBRARY_PATH=/opt/rocm-5.4.0/rccl/build:$PWD/../aws-ofi-rccl/src/.libs/:/opt/cray/libfabric/1.15.2.0/lib64/:/opt/rocm-5.4.0/lib
+#export FI_LOG_LEVEL=info
+#export NCCL_NET_GDR_LEVEL=3
+
 # 7 cpus-per-task because 1 cpu kept for OS
-MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -run_name 200_node --use_compressed_data --master_addr=$MASTER_ADDR
+#MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task934_MBrainLat_dup 0 -run_name 8_node_scale_dup_dist_aws_singleThread --master_addr=$MASTER_ADDR
+MIOPEN_DISABLE_CACHE=1 MIOPEN_CUSTOM_CACHE_DIR='pwd' HOME=/tmp/ srun -n $ranks_total -c 7 --ntasks-per-node=8 python nnunet/run/run_training_DDP.py 3d_fullres nnUNetTrainerV2_DDP Task933_MBrainLat 0 -run_name 128_node_scale_unpack --master_addr=$MASTER_ADDR
