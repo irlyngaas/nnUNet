@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A STF006
+#SBATCH -A BIF146
 #SBATCH -J ddp
 #SBATCH -o preprocess-%j.o
 #SBATCH -e preprocess-%j.e
@@ -10,15 +10,19 @@
 
 set +x
 source /lustre/orion/proj-shared/stf006/irl1/conda/etc/profile.d/conda.sh
-conda activate /lustre/orion/stf006/proj-shared/irl1/t2
-export LD_PRELOAD="/usr/lib64/libcrypto.so /usr/lib64/libssh.so.4 /usr/lib64/libssl.so.1.1"
+#conda activate /lustre/orion/stf006/proj-shared/irl1/t2
+conda activate /lustre/orion/bif146/world-shared/irl1/NNUNETENV
 
-export nnUNet_raw_data_base=/lustre/orion/stf006/proj-shared/irl1/raw_data
-export nnUNet_preprocessed=/lustre/orion/stf006/proj-shared/irl1/preprocessed_data
-export RESULTS_FOLDER=/lustre/orion/stf006/proj-shared/irl1/RESULTS
+#export LD_PRELOAD="/usr/lib64/libcrypto.so /usr/lib64/libssh.so.4 /usr/lib64/libssl.so.1.1"
 
-module load PrgEnv-gnu
-module load gcc/11.2.0
-module load rocm/5.4.0
+export nnUNet_raw_data_base=/lustre/orion/bif146/proj-shared/irl1/raw_data
+export nnUNet_preprocessed=/lustre/orion/bif146/proj-shared/irl1/preprocessed_data
+export RESULTS_FOLDER=/lustre/orion/bif146/proj-shared/irl1/RESULTS
 
-srun python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 934 -pl3d ExperimentPlanner3D_v21
+#module load PrgEnv-gnu
+#module load gcc/11.2.0
+module load rocm/6.0.0
+
+
+##I RUN THIS ON LOGIN NODE TO AVOID WALL CLOCK LIMITS##
+srun python nnunet/experiment_planning/nnUNet_plan_and_preprocess.py -t 933 -pl3d ExperimentPlanner3D_v21

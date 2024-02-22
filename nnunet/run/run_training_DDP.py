@@ -35,55 +35,33 @@ import socket
 
 import multiprocessing as mp
 
-def setup(master_addr):
-    print("MASTERP", flush=True)
-    print(master_addr, flush=True)
-    local_rank = None
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    world_size = comm.Get_size()
+def setup():
+
+    os.environ['MASTER_ADDR'] = str(os.environ['HOSTNAME'])
+    os.environ['MASTER_PORT'] = "29500"
+    os.environ['WORLD_SIZE'] = os.environ['SLURM_NTASKS']
+    os.environ['RANK'] = os.environ['SLURM_PROCID']
+    
+
+    num_nodes = int(os.environ['SLURM_NNODES'])
+    world_size = int(os.environ['SLURM_NTASKS'])
+    world_rank = int(os.environ['SLURM_PROCID'])
+    local_rank = int(os.environ['SLURM_LOCALID'])
     device_count = torch.cuda.device_count()
-    print("DEVICE_COUNT", flush=True)
-    print(device_count, flush=True)
-    if rank == 0:
+    if world_rank == 0:
         print('> initializing torch distributed ...', flush=True)
     # Manually set the device ids.
     if device_count > 0:
-        device = rank % device_count
+        device = world_rank % device_count
         if local_rank is not None:
             assert local_rank == device, \
                 'expected local-rank to be the same as rank % device-count.'
         else:
             local_rank = device
         torch.cuda.set_device(device)
+    dist.init_process_group('nccl', rank=world_rank, world_size=world_size)
 
-    #master_addr = None
-    #if rank == 0:
-    #    #hostname_cmd = ["hostname -I"]
-    #    #result = subprocess.check_output(hostname_cmd, shell=True)
-    #    #master_addr = result.decode('utf-8').split()[0]
-    #    hostname = socket.gethostname()
-    #    ip_address = socket.gethostbyname(hostname)
-    #    master_addr = ip_address
-
-    #master_addr = comm.bcast(master_addr, root=0)
-    #proc_name = MPI.Get_processor_name()
-    #all_procs = comm.allgather(proc_name)
-    #local_rank = sum([i == proc_name for i in all_procs[:rank]])
-    os.environ['RANK'] = str(rank)
-    os.environ['WORLD_SIZE'] = str(world_size)
-    os.environ['LOCAL_RANK'] = str(world_size % 8)
-    os.environ['MASTER_ADDR'] = master_addr
-    os.environ['MASTER_PORT'] = str(29500)
-    init_method = None
-    dist.init_process_group(
-        backend='nccl',
-        rank=rank,
-        world_size=world_size,
-        timeout=timedelta(minutes=10),
-        init_method=init_method)
-
-    return world_size, rank, local_rank
+    return world_size, world_rank, local_rank
 
 
 
@@ -159,7 +137,7 @@ def main():
                         help='Master Address from batch script')
 
     args = parser.parse_args()
-    _, _, local_rank = setup(args.master_addr)
+    _, _, local_rank = setup()
 
     task = args.task
     fold = args.fold

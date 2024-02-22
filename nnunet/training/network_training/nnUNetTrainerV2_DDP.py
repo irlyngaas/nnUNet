@@ -196,6 +196,7 @@ class nnUNetTrainerV2_DDP(nnUNetTrainerV2):
             self.initialize_network()
             self.initialize_optimizer_and_scheduler()
             self.network = DDP(self.network, device_ids=[self.local_rank])
+            #self.network = DDP(self.network, device_ids=[self.local_rank], output_device=[self.local_rank], process_group=None)
 
         else:
             self.print_to_log_file('self.was_initialized is True, not running self.initialize again')
