@@ -35,16 +35,28 @@ import socket
 
 import multiprocessing as mp
 
-def setup():
+def setup(fold):
 
-    os.environ['MASTER_ADDR'] = str(os.environ['HOSTNAME'])
-    os.environ['MASTER_PORT'] = "29500"
+    if int(fold) == 0:
+        os.environ['MASTER_ADDR'] = os.environ['ADDR1']
+        os.environ['MASTER_PORT'] = "29500"
+    elif int(fold) == 1:
+        os.environ['MASTER_ADDR'] = os.environ['ADDR2']
+        os.environ['MASTER_PORT'] = "29600"
+    elif int(fold) == 2:
+        os.environ['MASTER_ADDR'] = os.environ['ADDR3']
+        os.environ['MASTER_PORT'] = "29700"
+    elif int(fold) == 3:
+        os.environ['MASTER_ADDR'] = os.environ['ADDR4']
+        os.environ['MASTER_PORT'] = "29800"
+    elif int(fold) == 4:
+        os.environ['MASTER_ADDR'] = os.environ['ADDR5']
+        os.environ['MASTER_PORT'] = "29900"
+        
+    #set in export_DDP_ennvars_split.sh too, probably unnecessary
     os.environ['WORLD_SIZE'] = os.environ['SLURM_NTASKS']
-    os.environ['RANK'] = os.environ['SLURM_PROCID']
-    
 
-    num_nodes = int(os.environ['SLURM_NNODES'])
-    world_size = int(os.environ['SLURM_NTASKS'])
+    world_size = int(os.environ['WORLD_SIZE'])
     world_rank = int(os.environ['SLURM_PROCID'])
     local_rank = int(os.environ['SLURM_LOCALID'])
     device_count = torch.cuda.device_count()
@@ -59,6 +71,7 @@ def setup():
         else:
             local_rank = device
         torch.cuda.set_device(device)
+        #torch.cuda.set_device(local_rank)
     dist.init_process_group('nccl', rank=world_rank, world_size=world_size)
 
     return world_size, world_rank, local_rank
@@ -137,7 +150,7 @@ def main():
                         help='Master Address from batch script')
 
     args = parser.parse_args()
-    _, _, local_rank = setup()
+    _, _, local_rank = setup(args.fold)
 
     task = args.task
     fold = args.fold

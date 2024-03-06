@@ -1,0 +1,9 @@
+export RANK=$SLURM_PROCID
+export LOCAL_RANK=$SLURM_LOCALID
+export WORLD_SIZE=$SLURM_NTASKS
+export ADDR1=$(scontrol show hostname ${SLURM_NODELIST} | head -n 1)
+export ADDR2=$(scontrol show hostname ${SLURM_NODELIST} | head -n 21 | tail -1)
+export ADDR3=$(scontrol show hostname ${SLURM_NODELIST} | head -n 41 | tail -1)
+export ADDR4=$(scontrol show hostname ${SLURM_NODELIST} | head -n 61 | tail -1)
+export ADDR5=$(scontrol show hostname ${SLURM_NODELIST} | head -n 81 | tail -1)
+#export MASTER_PORT=29500 # default from torch launcher
