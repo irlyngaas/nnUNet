@@ -272,42 +272,66 @@ class GenericPreprocessor(object):
 
         for c in range(len(data)):
             scheme = self.normalization_scheme_per_modality[c]
-            if scheme == "CT":
-                # clip to lb and ub from train data foreground and use foreground mn and sd from training data
-                assert self.intensityproperties is not None, "ERROR: if there is a CT then we need intensity properties"
-                mean_intensity = self.intensityproperties[c]['mean']
-                std_intensity = self.intensityproperties[c]['sd']
-                lower_bound = self.intensityproperties[c]['percentile_00_5']
-                upper_bound = self.intensityproperties[c]['percentile_99_5']
-                data[c] = np.clip(data[c], lower_bound, upper_bound)
-                data[c] = (data[c] - mean_intensity) / std_intensity
-                if use_nonzero_mask[c]:
-                    data[c][seg[-1] < 0] = 0
-            elif scheme == "CT2":
-                # clip to lb and ub from train data foreground, use mn and sd form each case for normalization
-                assert self.intensityproperties is not None, "ERROR: if there is a CT then we need intensity properties"
-                lower_bound = self.intensityproperties[c]['percentile_00_5']
-                upper_bound = self.intensityproperties[c]['percentile_99_5']
-                mask = (data[c] > lower_bound) & (data[c] < upper_bound)
-                data[c] = np.clip(data[c], lower_bound, upper_bound)
-                mn = data[c][mask].mean()
-                sd = data[c][mask].std()
-                data[c] = (data[c] - mn) / sd
-                if use_nonzero_mask[c]:
-                    data[c][seg[-1] < 0] = 0
-            elif scheme == 'noNorm':
-                print('no intensity normalization')
-                pass
-            else:
-                if use_nonzero_mask[c]:
-                    mask = seg[-1] >= 0
-                    data[c][mask] = (data[c][mask] - data[c][mask].mean()) / (data[c][mask].std() + 1e-8)
-                    data[c][mask == 0] = 0
-                else:
-                    mn = data[c].mean()
-                    std = data[c].std()
-                    # print(data[c].shape, data[c].dtype, mn, std)
-                    data[c] = (data[c] - mn) / (std + 1e-8)
+            #if scheme == "CT":
+            #    print("HERE1")
+            #    # clip to lb and ub from train data foreground and use foreground mn and sd from training data
+            #    assert self.intensityproperties is not None, "ERROR: if there is a CT then we need intensity properties"
+            #    mean_intensity = self.intensityproperties[c]['mean']
+            #    std_intensity = self.intensityproperties[c]['sd']
+            #    lower_bound = self.intensityproperties[c]['percentile_00_5']
+            #    upper_bound = self.intensityproperties[c]['percentile_99_5']
+            #    data[c] = np.clip(data[c], lower_bound, upper_bound)
+            #    data[c] = (data[c] - mean_intensity) / std_intensity
+            #    if use_nonzero_mask[c]:
+            #        data[c][seg[-1] < 0] = 0
+            #elif scheme == "CT2":
+            #    print("HERE2")
+            #    # clip to lb and ub from train data foreground, use mn and sd form each case for normalization
+            #    assert self.intensityproperties is not None, "ERROR: if there is a CT then we need intensity properties"
+            #    lower_bound = self.intensityproperties[c]['percentile_00_5']
+            #    upper_bound = self.intensityproperties[c]['percentile_99_5']
+            #    mask = (data[c] > lower_bound) & (data[c] < upper_bound)
+            #    data[c] = np.clip(data[c], lower_bound, upper_bound)
+            #    mn = data[c][mask].mean()
+            #    sd = data[c][mask].std()
+            #    data[c] = (data[c] - mn) / sd
+            #    if use_nonzero_mask[c]:
+            #        data[c][seg[-1] < 0] = 0
+            #elif scheme == 'noNorm':
+            #    print("HERE3")
+            #    print('no intensity normalization')
+            #    pass
+            #else:
+            #    if use_nonzero_mask[c]:
+            #        print("HERE4")
+            #        mask = seg[-1] >= 0
+            #        data[c][mask] = (data[c][mask] - data[c][mask].mean()) / (data[c][mask].std() + 1e-8)
+            #        data[c][mask == 0] = 0
+            #    else:
+            #        print("HERE5")
+            #        mn = data[c].mean()
+            #        std = data[c].std()
+            #        # print(data[c].shape, data[c].dtype, mn, std)
+            #        data[c] = (data[c] - mn) / (std + 1e-8)
+
+            #Calculated from the full dataset
+            mean_intensity = self.intensityproperties[c]['mean']
+            std_intensity = self.intensityproperties[c]['sd']
+            lower_bound = self.intensityproperties[c]['percentile_00_5']
+            upper_bound = self.intensityproperties[c]['percentile_99_5']
+
+            data[c] = np.clip(data[c], lower_bound, upper_bound)
+            ##mean normalization with standardization
+            data[c] = (data[c] - mean_intensity) / std_intensity
+            ##max-min normalization with local data
+            ##data[c] = (data[c] - data[c].mean())/(data[c].max() - data[c].min())
+            ##mean normalization with local data
+            ##data[c] = (data[c] - data[c].mean()) / (data[c].std() + 1e-8)
+
+            #Rescale to [0,1] 
+            data[c] = (data[c] - np.min(data[c])) / (np.max(data[c]) - np.min(data[c]))
+            #print("MIN - MAX", np.min(data[c]), np.max(data[c]))
+
         return data, seg, properties
 
     def preprocess_test_case(self, data_files, target_spacing, seg_file=None, force_separate_z=None):
